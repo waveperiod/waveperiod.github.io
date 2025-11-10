@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wave - GAS Fitness Planner [Prototype]</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles */
+        :root {
+            --wave-red: #D60D0D;
+            --coral-high: #FF6B6B;
+            --coral-mid: #FFB8B8;
+            --coral-low: #FFE5E5;
+        }
+
+        .wave-logo {
+            color: var(--wave-red);
+            font-size: 2rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .gradient-bar {
+            background: linear-gradient(180deg, #FF6B6B 0%, #FFB8B8 50%, #FFE5E5 100%);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #E5E5E5;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--wave-red);
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--wave-red);
+            cursor: pointer;
+        }
+
+        .prototype-badge {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: #FFA500;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 9999;
+        }
+
+        #chartSection {
+            display: none;
+        }
+
+        #chartSection.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-white text-black">
+    <!-- Prototype Badge -->
+    <div class="prototype-badge">PROTOTYPE - CLICK TO TEST</div>
+
+    <!-- Language Toggle -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="langToggle" class="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 hover:border-red-600 transition">
+            <span id="langIcon">🇬🇧</span> <span id="langText">EN</span>
+        </button>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex flex-col items-center justify-center px-4 py-20">
+        <div class="max-w-4xl mx-auto text-center">
+            <!-- Logo -->
+            <div class="wave-logo mb-8">({})</div>
+
+            <!-- Headline -->
+            <h1 id="heroTitle" class="text-5xl md:text-6xl font-bold mb-6">
+                12 Weeks: Turn Your Hormones Into Your Fitness Coach
+            </h1>
+
+            <!-- Subtitle -->
+            <p id="heroSubtitle" class="text-2xl md:text-3xl text-gray-600 mb-12">
+                Push when it's time to push, rest when it's time to rest
+            </p>
+
+            <!-- CTA -->
+            <button onclick="scrollToForm()" class="bg-red-600 text-white text-xl px-12 py-4 rounded-lg hover:bg-red-700 transition">
+                <span id="heroCTA">Start My 12-Week Plan</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="bg-gray-50 py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <h2 id="howItWorksTitle" class="text-4xl font-bold text-center mb-16">How It Works</h2>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Step 1 -->
+                <div class="bg-white p-8 rounded-lg shadow-sm">
+                    <div class="text-4xl mb-4">📝</div>
+                    <h3 class="text-xl font-bold mb-3" id="step1Title">Enter Your Cycle Info</h3>
+                    <p class="text-gray-600" id="step1Desc">Tell us your cycle length and next period date</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="bg-white p-8 rounded-lg shadow-sm">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h3 class="text-xl font-bold mb-3" id="step2Title">See Your Plan</h3>
+                    <p class="text-gray-600" id="step2Desc">Visualize 12 weeks of training mapped to your cycle</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="bg-white p-8 rounded-lg shadow-sm">
+                    <div class="text-4xl mb-4">📅</div>
+                    <h3 class="text-xl font-bold mb-3" id="step3Title">Export to Calendar</h3>
+                    <p class="text-gray-600" id="step3Desc">Download and import into Apple/Google Calendar</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Input Form Section -->
+    <section id="formSection" class="py-20 px-4">
+        <div class="max-w-2xl mx-auto">
+            <h2 id="formTitle" class="text-4xl font-bold text-center mb-12">Create Your Plan</h2>
+
+            <form id="planForm" class="bg-white p-8 rounded-lg shadow-lg">
+                <!-- Cycle Length -->
+                <div class="mb-8">
+                    <label class="block text-lg font-semibold mb-4">
+                        <span id="cycleLengthLabel">Menstrual Cycle Length (days)</span>
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="cycleLength" class="slider flex-1" min="21" max="35" value="28">
+                        <span id="cycleLengthValue" class="text-2xl font-bold text-red-600 w-16 text-center">28</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2" id="cycleLengthHelp">Typical cycles are 21-35 days</p>
+                </div>
+
+                <!-- Next Period Date -->
+                <div class="mb-8">
+                    <label class="block text-lg font-semibold mb-4" id="nextPeriodLabel">
+                        Next Period Start Date
+                    </label>
+                    <input type="date" id="nextPeriod" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg" required>
+                </div>
+
+                <!-- Fitness Level -->
+                <div class="mb-8">
+                    <label class="block text-lg font-semibold mb-4" id="fitnessLevelLabel">
+                        Fitness Level
+                    </label>
+                    <select id="fitnessLevel" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-lg">
+                        <option value="beginner" id="beginnerOption">Beginner - New to fitness</option>
+                        <option value="intermediate" selected id="intermediateOption">Intermediate - Regular exerciser</option>
+                        <option value="advanced" id="advancedOption">Advanced - Athlete level</option>
+                    </select>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-red-600 text-white text-xl py-4 rounded-lg hover:bg-red-700 transition">
+                    <span id="generateButton">Generate My 12-Week Plan</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Chart Section (Hidden until form submit) -->
+    <section id="chartSection" class="bg-gray-50 py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center justify-center gap-4 mb-8">
+                <h2 id="chartTitle" class="text-4xl font-bold text-center">Your 12-Week Training Plan</h2>
+                <button onclick="showGASModal()" class="text-red-600 hover:text-red-700 text-2xl" title="What is GAS?">
+                    ❓
+                </button>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div class="bg-white p-8 rounded-lg shadow-lg mb-8">
+                <canvas id="trainingChart" height="100"></canvas>
+            </div>
+
+            <!-- Legend -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 rounded" style="background: #FFE5E5;"></div>
+                        <span class="font-semibold">🌙 <span id="menstrualPhase">Menstrual</span></span>
+                    </div>
+                    <p class="text-sm text-gray-600" id="menstrualTip">Recovery mode</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 rounded" style="background: #FFD4A3;"></div>
+                        <span class="font-semibold">🌱 <span id="follicularPhase">Follicular</span></span>
+                    </div>
+                    <p class="text-sm text-gray-600" id="follicularTip">Energy rising</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 rounded" style="background: #FF6B6B;"></div>
+                        <span class="font-semibold">⚡ <span id="ovulationPhase">Ovulation</span></span>
+                    </div>
+                    <p class="text-sm text-gray-600" id="ovulationTip">Peak performance</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-sm">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 rounded" style="background: #B8B8FF;"></div>
+                        <span class="font-semibold">🌗 <span id="lutealPhase">Luteal</span></span>
+                    </div>
+                    <p class="text-sm text-gray-600" id="lutealTip">Moderate intensity</p>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div class="text-center">
+                <button onclick="showEmailModal()" class="bg-red-600 text-white text-xl px-12 py-4 rounded-lg hover:bg-red-700 transition">
+                    <span id="downloadButton">📥 Download to Calendar</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shero Membership Section -->
+    <section class="bg-black text-white py-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 id="sheroTitle" class="text-4xl font-bold mb-6">Join Shero - Beta Membership</h2>
+            <p id="sheroSubtitle" class="text-xl text-gray-300 mb-8">
+                Get exclusive access to the Wave app before anyone else
+            </p>
+
+            <!-- Pricing -->
+            <div class="mb-8">
+                <span class="text-gray-400 line-through text-2xl">¥999</span>
+                <span class="text-5xl font-bold text-red-500 ml-4">¥299</span>
+                <span class="text-xl text-gray-300 ml-2" id="sheroEarlyBird">(Early Bird)</span>
+            </div>
+
+            <!-- Benefits -->
+            <div class="grid md:grid-cols-3 gap-6 mb-12">
+                <div class="bg-gray-900 p-6 rounded-lg">
+                    <div class="text-3xl mb-3">📱</div>
+                    <p id="sheroBenefit1">Full mobile app access</p>
+                </div>
+                <div class="bg-gray-900 p-6 rounded-lg">
+                    <div class="text-3xl mb-3">🎓</div>
+                    <p id="sheroBenefit2">Expert coaching tips</p>
+                </div>
+                <div class="bg-gray-900 p-6 rounded-lg">
+                    <div class="text-3xl mb-3">👥</div>
+                    <p id="sheroBenefit3">Private community</p>
+                </div>
+            </div>
+
+            <!-- CTA -->
+            <button onclick="alert('🎉 This would link to a booking form!')" class="bg-red-600 text-white text-xl px-12 py-4 rounded-lg hover:bg-red-700 transition">
+                <span id="sheroButton">Reserve My Spot</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 py-8 px-4 text-center text-gray-600">
+        <p>&copy; 2025 Wave. <span id="footerPrivacy">Privacy Policy</span> | <span id="footerContact">Contact</span></p>
+    </footer>
+
+    <!-- Email Collection Modal -->
+    <div id="emailModal" class="modal">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 id="emailModalTitle" class="text-2xl font-bold mb-4">Get Your Calendar File</h3>
+            <p id="emailModalDesc" class="text-gray-600 mb-6">
+                Enter your email to receive the download link and app launch updates
+            </p>
+
+            <form id="emailForm" onsubmit="handleEmailSubmit(event)">
+                <input type="email" id="emailInput" placeholder="your@email.com"
+                       class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 mb-4 text-lg" required>
+
+                <p class="text-xs text-gray-500 mb-6" id="emailPrivacy">
+                    We'll only email you about the Wave app launch. No spam, ever.
+                </p>
+
+                <div class="flex gap-4">
+                    <button type="button" onclick="skipEmail()" class="flex-1 border-2 border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50">
+                        <span id="emailSkip">Skip</span>
+                    </button>
+                    <button type="submit" class="flex-1 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700">
+                        <span id="emailSubmit">Submit & Download</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- GAS Explainer Modal -->
+    <div id="gasModal" class="modal">
+        <div class="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="gasModalTitle" class="text-2xl font-bold">What is GAS Training?</h3>
+                <button onclick="closeGASModal()" class="text-gray-500 hover:text-black text-3xl">&times;</button>
+            </div>
+
+            <div class="prose max-w-none" id="gasModalContent">
+                <p class="mb-4">
+                    <strong>GAS (General Adaptation Syndrome)</strong> is a training principle developed by scientist Hans Selye. It describes how your body responds to stress in three phases:
+                </p>
+
+                <ul class="mb-4 space-y-2">
+                    <li><strong>Shock Phase (Weeks 1-3):</strong> Your body encounters new stress and adapts</li>
+                    <li><strong>Adaptation Phase (Weeks 5-7):</strong> Your body gets stronger to handle the stress</li>
+                    <li><strong>Peak Phase (Weeks 9-11):</strong> You reach your maximum performance</li>
+                </ul>
+
+                <p class="mb-4">
+                    Wave combines GAS with your menstrual cycle to optimize when you push hard and when you recover. This means better results without burnout.
+                </p>
+
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-sm text-gray-700">
+                        <strong>The Wave Advantage:</strong> Unlike generic plans, we adjust intensity based on your hormonal phases. When estrogen is high (follicular/ovulation), we push harder. When progesterone dominates (luteal/menstrual), we focus on recovery.
+                    </p>
+                </div>
+            </div>
+
+            <button onclick="closeGASModal()" class="mt-6 w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700">
+                <span id="gasModalClose">Got It!</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Thank You Modal -->
+    <div id="thankYouModal" class="modal">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center">
+            <div class="text-6xl mb-4">🎉</div>
+            <h3 id="thankYouTitle" class="text-2xl font-bold mb-4">Download Started!</h3>
+            <p id="thankYouDesc" class="text-gray-600 mb-6">
+                Check your Downloads folder for "wave-12week-plan.ics". Import it to your calendar app to see your full plan!
+            </p>
+            <button onclick="closeThankYouModal()" class="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700">
+                <span id="thankYouButton">Close</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Language data
+        const translations = {
+            en: {
+                langIcon: '🇬🇧',
+                langText: 'EN',
+                heroTitle: '12 Weeks: Turn Your Hormones Into Your Fitness Coach',
+                heroSubtitle: 'Push when it\'s time to push, rest when it\'s time to rest',
+                heroCTA: 'Start My 12-Week Plan',
+                howItWorksTitle: 'How It Works',
+                step1Title: 'Enter Your Cycle Info',
+                step1Desc: 'Tell us your cycle length and next period date',
+                step2Title: 'See Your Plan',
+                step2Desc: 'Visualize 12 weeks of training mapped to your cycle',
+                step3Title: 'Export to Calendar',
+                step3Desc: 'Download and import into Apple/Google Calendar',
+                formTitle: 'Create Your Plan',
+                cycleLengthLabel: 'Menstrual Cycle Length (days)',
+                cycleLengthHelp: 'Typical cycles are 21-35 days',
+                nextPeriodLabel: 'Next Period Start Date',
+                fitnessLevelLabel: 'Fitness Level',
+                beginnerOption: 'Beginner - New to fitness',
+                intermediateOption: 'Intermediate - Regular exerciser',
+                advancedOption: 'Advanced - Athlete level',
+                generateButton: 'Generate My 12-Week Plan',
+                chartTitle: 'Your 12-Week Training Plan',
+                menstrualPhase: 'Menstrual',
+                menstrualTip: 'Recovery mode',
+                follicularPhase: 'Follicular',
+                follicularTip: 'Energy rising',
+                ovulationPhase: 'Ovulation',
+                ovulationTip: 'Peak performance',
+                lutealPhase: 'Luteal',
+                lutealTip: 'Moderate intensity',
+                downloadButton: '📥 Download to Calendar',
+                sheroTitle: 'Join Shero - Beta Membership',
+                sheroSubtitle: 'Get exclusive access to the Wave app before anyone else',
+                sheroEarlyBird: '(Early Bird)',
+                sheroBenefit1: 'Full mobile app access',
+                sheroBenefit2: 'Expert coaching tips',
+                sheroBenefit3: 'Private community',
+                sheroButton: 'Reserve My Spot',
+                footerPrivacy: 'Privacy Policy',
+                footerContact: 'Contact',
+                emailModalTitle: 'Get Your Calendar File',
+                emailModalDesc: 'Enter your email to receive the download link and app launch updates',
+                emailPrivacy: 'We\'ll only email you about the Wave app launch. No spam, ever.',
+                emailSkip: 'Skip',
+                emailSubmit: 'Submit & Download',
+                gasModalTitle: 'What is GAS Training?',
+                gasModalClose: 'Got It!',
+                thankYouTitle: 'Download Started!',
+                thankYouDesc: 'Check your Downloads folder for "wave-12week-plan.ics". Import it to your calendar app to see your full plan!',
+                thankYouButton: 'Close'
+            },
+            zh: {
+                langIcon: '🇨🇳',
+                langText: '中文',
+                heroTitle: '12周，让激素成为你的健身教练',
+                heroSubtitle: '该冲的时候冲，该歇的时候歇',
+                heroCTA: '开始规划我的12周',
+                howItWorksTitle: '如何使用',
+                step1Title: '输入周期信息',
+                step1Desc: '告诉我们你的周期长度和下次月经日期',
+                step2Title: '查看计划',
+                step2Desc: '可视化12周训练与周期的映射关系',
+                step3Title: '导出到日历',
+                step3Desc: '下载并导入到苹果/谷歌日历',
+                formTitle: '创建你的计划',
+                cycleLengthLabel: '月经周期长度（天）',
+                cycleLengthHelp: '典型周期为21-35天',
+                nextPeriodLabel: '下次月经开始日期',
+                fitnessLevelLabel: '健身水平',
+                beginnerOption: '初级 - 健身新手',
+                intermediateOption: '中级 - 经常运动',
+                advancedOption: '高级 - 运动员水平',
+                generateButton: '生成我的12周计划',
+                chartTitle: '你的12周训练计划',
+                menstrualPhase: '月经期',
+                menstrualTip: '适合恢复性训练',
+                follicularPhase: '卵泡期',
+                follicularTip: '能量上升期',
+                ovulationPhase: '排卵期',
+                ovulationTip: '巅峰表现期',
+                lutealPhase: '黄体期',
+                lutealTip: '适度调整期',
+                downloadButton: '📥 下载到日历',
+                sheroTitle: '加入 Shero - 测试会员',
+                sheroSubtitle: '抢先体验 Wave 应用',
+                sheroEarlyBird: '（早鸟价）',
+                sheroBenefit1: '完整移动应用访问',
+                sheroBenefit2: '专家指导建议',
+                sheroBenefit3: '私密社区',
+                sheroButton: '预约席位',
+                footerPrivacy: '隐私政策',
+                footerContact: '联系我们',
+                emailModalTitle: '获取日历文件',
+                emailModalDesc: '输入你的邮箱以接收下载链接和应用上线通知',
+                emailPrivacy: '我们只会发送 Wave 应用相关邮件，绝不骚扰。',
+                emailSkip: '跳过',
+                emailSubmit: '提交并下载',
+                gasModalTitle: '什么是 GAS 训练？',
+                gasModalClose: '明白了！',
+                thankYouTitle: '开始下载！',
+                thankYouDesc: '检查你的下载文件夹中的 "wave-12week-plan.ics"。导入到日历应用查看完整计划！',
+                thankYouButton: '关闭'
+            }
+        };
+
+        let currentLang = 'en';
+        let chart = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default next period date to 7 days from now
+            const defaultDate = new Date();
+            defaultDate.setDate(defaultDate.getDate() + 7);
+            document.getElementById('nextPeriod').valueAsDate = defaultDate;
+
+            // Update cycle length display
+            document.getElementById('cycleLength').addEventListener('input', function() {
+                document.getElementById('cycleLengthValue').textContent = this.value;
+            });
+        });
+
+        // Language toggle
+        document.getElementById('langToggle').addEventListener('click', function() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            updateLanguage();
+        });
+
+        function updateLanguage() {
+            const t = translations[currentLang];
+            for (const [key, value] of Object.entries(t)) {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = value;
+                }
+            }
+
+            // Update chart if it exists
+            if (chart) {
+                updateChart();
+            }
+        }
+
+        // Scroll to form
+        function scrollToForm() {
+            document.getElementById('formSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Form submission
+        document.getElementById('planForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Show chart section
+            document.getElementById('chartSection').classList.add('active');
+
+            // Generate chart
+            updateChart();
+
+            // Scroll to chart
+            setTimeout(() => {
+                document.getElementById('chartSection').scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        });
+
+        // Generate chart with fake data
+        function updateChart() {
+            const cycleLength = parseInt(document.getElementById('cycleLength').value);
+            const fitnessLevel = document.getElementById('fitnessLevel').value;
+
+            // GAS training intensity pattern (12 weeks)
+            const baseIntensity = [6, 7, 8, 4, 7, 8, 9, 5, 8, 9, 10, 4];
+
+            // Adjust based on fitness level
+            const levelModifier = {
+                'beginner': -1,
+                'intermediate': 0,
+                'advanced': 1
+            };
+
+            const intensity = baseIntensity.map(i => Math.max(1, Math.min(10, i + levelModifier[fitnessLevel])));
+
+            // Generate cycle phases (simplified)
+            const phases = [];
+            const phaseColors = [];
+            for (let week = 0; week < 12; week++) {
+                const weekInCycle = (week * 7) % cycleLength;
+                let phase, color;
+
+                if (weekInCycle < 5) {
+                    phase = currentLang === 'zh' ? '月经期' : 'Menstrual';
+                    color = '#FFE5E5';
+                } else if (weekInCycle < cycleLength / 2 - 2) {
+                    phase = currentLang === 'zh' ? '卵泡期' : 'Follicular';
+                    color = '#FFD4A3';
+                } else if (weekInCycle < cycleLength / 2 + 2) {
+                    phase = currentLang === 'zh' ? '排卵期' : 'Ovulation';
+                    color = '#FF6B6B';
+                } else {
+                    phase = currentLang === 'zh' ? '黄体期' : 'Luteal';
+                    color = '#B8B8FF';
+                }
+
+                phases.push(phase);
+                phaseColors.push(color);
+            }
+
+            const ctx = document.getElementById('trainingChart').getContext('2d');
+
+            // Destroy existing chart
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 12}, (_, i) => `W${i + 1}`),
+                    datasets: [{
+                        label: currentLang === 'zh' ? '训练强度' : 'Training Intensity',
+                        data: intensity,
+                        backgroundColor: phaseColors,
+                        borderColor: '#000',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            title: {
+                                display: true,
+                                text: currentLang === 'zh' ? '强度 (1-10)' : 'Intensity (1-10)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: currentLang === 'zh' ? '周数' : 'Week'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const phase = phases[context.dataIndex];
+                                    const tips = {
+                                        'Menstrual': 'Recovery mode - light training',
+                                        'Follicular': 'Energy rising - increase volume',
+                                        'Ovulation': 'Peak performance - max intensity',
+                                        'Luteal': 'Moderate - focus on technique',
+                                        '月经期': '恢复模式 - 轻度训练',
+                                        '卵泡期': '能量上升 - 增加训练量',
+                                        '排卵期': '巅峰表现 - 最大强度',
+                                        '黄体期': '适度调整 - 关注技术'
+                                    };
+                                    return [phase, tips[phase]];
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Email modal
+        function showEmailModal() {
+            document.getElementById('emailModal').classList.add('active');
+        }
+
+        function handleEmailSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('emailInput').value;
+            console.log('Email collected:', email);
+
+            // Close email modal
+            document.getElementById('emailModal').classList.remove('active');
+
+            // Simulate download
+            simulateDownload();
+
+            // Show thank you modal
+            document.getElementById('thankYouModal').classList.add('active');
+        }
+
+        function skipEmail() {
+            document.getElementById('emailModal').classList.remove('active');
+            simulateDownload();
+            document.getElementById('thankYouModal').classList.add('active');
+        }
+
+        function simulateDownload() {
+            // In real implementation, this would generate ICS file
+            console.log('ICS file download simulated');
+            alert('📥 ICS file download would start here!\n\nFile: wave-12week-plan.ics\nSize: 84 events (12 weeks × 7 days)');
+        }
+
+        function closeThankYouModal() {
+            document.getElementById('thankYouModal').classList.remove('active');
+        }
+
+        // GAS modal
+        function showGASModal() {
+            document.getElementById('gasModal').classList.add('active');
+        }
+
+        function closeGASModal() {
+            document.getElementById('gasModal').classList.remove('active');
+        }
+
+        // Close modals on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
